@@ -1,6 +1,6 @@
 package com.github.adalpari;
 
-import java.util.Scanner;
+import java.util.*;
 
 public class Main {
 
@@ -8,11 +8,17 @@ public class Main {
     private static int m;
     private static String[] lines;
     private static Section[][] map;
+    private static Queue<Section> path = new LinkedList<>();
 
     public static void main(String[] args) {
         try {
             readInput();
-            fillBoard();
+            insertEdges();
+
+            while (!path.isEmpty()) {
+                Section section = path.poll();
+                visit(section);
+            }
 
             long  coastLength = calculateLength();
             System.out.println(coastLength);
@@ -26,14 +32,20 @@ public class Main {
 
         if (sc.hasNextLine()) {
             parseHeader(sc.nextLine());
+        }  else {
+            throw new GeneralException();
         }
 
         initializeDataContents();
 
         for (int i = 0; i < n; i++){
             if (sc.hasNextLine()) {
-                lines[i] = sc.nextLine();
-                if (lines[i].length() != m) {
+                String line = sc.nextLine();
+                if (line.length() == m) {
+                    for (int j = 0; j < m; j++) {
+                        setSectionOnMap(line.charAt(j), i, j);
+                    }
+                } else {
                     throw new GeneralException();
                 }
             } else {
@@ -42,6 +54,16 @@ public class Main {
         }
 
         sc.close();
+    }
+
+    private static void setSectionOnMap(char readChar, int i, int j) throws GeneralException {
+        Section section = new Section(i, j);
+        if (readChar == '0') {
+            section.setWater();
+        } else if (readChar != '1') {
+            throw new GeneralException();
+        }
+        map[i][j] = section;
     }
 
     private static void parseHeader(String header) throws GeneralException {
@@ -64,52 +86,79 @@ public class Main {
         map = new Section[n][m];
     }
 
-    private static void fillBoard() throws GeneralException {
+    private static void insertEdges() {
         for (int i = 0; i < n; i++) {
-            for (int j = 0; j < m; j++) {
-                setSectionOnMap(lines[i].charAt(j), i, j);
-                // first check of connected water
-                setConnectedUp(i, j);
+            if (map[i][0].isWater()) {
+                map[i][0].setVisited();
+                path.add(map[i][0]);
+            }
+
+            if (map[i][m-1].isWater()) {
+                map[i][m-1].setVisited();
+                path.add(map[i][m-1]);
             }
         }
 
-        //reverse lookup for setConnected
-        for (int i = n - 1; i >= 0; i--) {
-            for (int j = m -1; j >= 0; j--) {
-                setConnectedDown(i, j);
+        for (int j = 0; j < m; j++) {
+            if (map[0][j].isWater()) {
+                map[0][j].setVisited();
+                path.add(map[0][j]);
+            }
+
+            if (map[n-1][j].isWater()) {
+                map[n-1][j].setVisited();
+                path.add(map[n-1][j]);
             }
         }
     }
 
-    private static void setSectionOnMap(char readChar, int i, int j) throws GeneralException {
-        Section section = new Section();
-        if (readChar == '0') {
-            section.setWater(true);
-        } else if (readChar != '1') {
-            throw new GeneralException();
-        }
-        map[i][j] = section;
-    }
-
-    private static void setConnectedUp(int i, int j) {
-        Section section = new Section();
+    private static void visit(Section section) {
         if (section.isWater()) {
-            if (i == 0 || j == 0 || i == n - 1 || j == m - 1) {
-                map[i][j].setConnected(true);
-            } else if (map[i - 1][j].isConnected() || map[i][j - 1].isConnected()) {
-                map[i][j].setConnected(true);
-            }
+            section.setConnected();
+            section.setVisited();
+
+            addUpToQueue(section);
+            addDownToQueue(section);
+            addLeftToQueue(section);
+            addRightToQueue(section);
         }
     }
 
-    private static void setConnectedDown(int i, int j) {
-        Section section = map[i][j];
-        if (section.isWater() && !section.isConnected()) {
-            if (i == 0 || j == 0 || i == n - 1 || j == m - 1) {
-                section.setConnected(true);
-            } else if (map[i + 1][j].isConnected() || map[i][j + 1].isConnected()) {
-                section.setConnected(true);
-            }
+    private static void addUpToQueue(Section currentSection) {
+        int i = currentSection.getY();
+        int j = currentSection.getX();
+        if (i > 0) {
+            addSectionToQueue(map[i - 1][j]);
+        }
+    }
+
+    private static void addDownToQueue(Section currentSection) {
+        int i = currentSection.getY();
+        int j = currentSection.getX();
+        if (i < n - 1) {
+            addSectionToQueue(map[i + 1][j]);
+        }
+    }
+
+    private static void addLeftToQueue(Section currentSection) {
+        int i = currentSection.getY();
+        int j = currentSection.getX();
+        if (j > 0) {
+            addSectionToQueue(map[i][j - 1]);
+        }
+    }
+
+    private static void addRightToQueue(Section currentSection) {
+        int i = currentSection.getY();
+        int j = currentSection.getX();
+        if (j < m - 1) {
+            addSectionToQueue(map[i][j + 1]);
+        }
+    }
+
+    private static void addSectionToQueue(Section section) {
+        if (!section.isVisited()) {
+            path.add(section);
         }
     }
 
@@ -200,28 +249,50 @@ public class Main {
     }
 
     private static class Section {
+        private int y;
+        private int x;
         private boolean water;
         private boolean connected;
+        private boolean visited;
 
-        public Section() {
+        public Section(int y, int x) {
+            this.y = y;
+            this.x = x;
             this.water = false;
             this.connected = false;
+            this.visited = false;
         }
 
         public boolean isWater() {
             return water;
         }
 
-        public void setWater(boolean water) {
-            this.water = water;
+        public void setWater() {
+            this.water = true;
         }
 
         public boolean isConnected() {
             return connected;
         }
 
-        public void setConnected(boolean connected) {
-            this.connected = connected;
+        public void setConnected() {
+            this.connected = true;
+        }
+
+        public boolean isVisited() {
+            return visited;
+        }
+
+        public void setVisited() {
+            this.visited = true;
+        }
+
+        public int getY() {
+            return y;
+        }
+
+        public int getX() {
+            return x;
         }
     }
 
