@@ -11,16 +11,13 @@ public class Main {
     private static Queue<Section> path = new LinkedList<>();
 
     public static void main(String[] args) {
+        long  coastLength;
         try {
             readInput();
             insertEdges();
+            iterateSections();
 
-            while (!path.isEmpty()) {
-                Section section = path.poll();
-                visit(section);
-            }
-
-            long  coastLength = calculateLength();
+            coastLength = calculateLength();
             System.out.println(coastLength);
         } catch (GeneralException e) {
             System.out.println("An error was detected.");
@@ -30,28 +27,9 @@ public class Main {
     private static void readInput() throws GeneralException {
         Scanner sc = new Scanner(System.in);
 
-        if (sc.hasNextLine()) {
-            parseHeader(sc.nextLine());
-        }  else {
-            throw new GeneralException();
-        }
-
+        parseHeader(sc);
         initializeDataContents();
-
-        for (int i = 0; i < n; i++){
-            if (sc.hasNextLine()) {
-                String line = sc.nextLine();
-                if (line.length() == m) {
-                    for (int j = 0; j < m; j++) {
-                        setSectionOnMap(line.charAt(j), i, j);
-                    }
-                } else {
-                    throw new GeneralException();
-                }
-            } else {
-                throw new GeneralException();
-            }
-        }
+        parseBody(sc);
 
         sc.close();
     }
@@ -66,18 +44,40 @@ public class Main {
         map[i][j] = section;
     }
 
-    private static void parseHeader(String header) throws GeneralException {
-        String[] headerTokens = header.split(" ");
+    private static void parseHeader(Scanner sc) throws GeneralException {
+        if (sc.hasNextLine()) {
+            String line = sc.nextLine();
+            String[] headerTokens = line.split(" ");
 
-        if (headerTokens.length == 2) {
-            try {
-                n = Integer.parseInt(headerTokens[0]);
-                m = Integer.parseInt(headerTokens[1]);
-            } catch (NumberFormatException e) {
+            if (headerTokens.length == 2) {
+                try {
+                    n = Integer.parseInt(headerTokens[0]);
+                    m = Integer.parseInt(headerTokens[1]);
+                } catch (NumberFormatException e) {
+                    throw new GeneralException();
+                }
+            } else {
                 throw new GeneralException();
             }
-        } else {
+        }  else {
             throw new GeneralException();
+        }
+    }
+
+    private static void parseBody(Scanner sc) throws GeneralException {
+        for (int i = 0; i < n; i++){
+            if (sc.hasNextLine()) {
+                String line = sc.nextLine();
+                if (line.length() == m) {
+                    for (int j = 0; j < m; j++) {
+                        setSectionOnMap(line.charAt(j), i, j);
+                    }
+                } else {
+                    throw new GeneralException();
+                }
+            } else {
+                throw new GeneralException();
+            }
         }
     }
 
@@ -112,7 +112,14 @@ public class Main {
         }
     }
 
-    private static void visit(Section section) {
+    private static void iterateSections() {
+        while (!path.isEmpty()) {
+            Section section = path.poll();
+            visitSection(section);
+        }
+    }
+
+    private static void visitSection(Section section) {
         if (section.isWater()) {
             section.setConnected();
             section.setVisited();
